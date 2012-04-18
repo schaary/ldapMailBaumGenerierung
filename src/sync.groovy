@@ -2,6 +2,7 @@
 // import org.apache.directory.groovyldap.*
 import groovy.sql.Sql
 import oracle.jdbc.driver.*
+import java.security.MessageDigest
 
 def passwordDir = System.getProperty("user.home") + "/.password/"
 
@@ -62,21 +63,23 @@ db("BEGIN ? := mail_pkg.getUKMailAddresses(?); END;",
     }    
 } 
 
-//vArrMailBaum.each { if (it.sname == 'Schaarschmidt') { println it } }
-def vFileLdifFile = new File('ldapMailTree.ldif')
+def sha1 = MessageDigest.getInstance("SHA1")
 
-vArrMailBaum.each {
-    sname = it.sname
-    vFileLdifFile.write('objectclass: top')
-    vFileLdifFile.write('objectclass: person')
-    vFileLdifFile.write('objectclass: inetorgperson')
-    vFileLdifFile.write('cn: ' + it.gname.toString().trim() + " " + it.sname.toString().trim())
-    vFileLdifFile.write('givenname: ' + it.gname.toString().trim())
-    vFileLdifFile.write('sn: ' + it.sname.toString().trim())
-    vFileLdifFile.write('mail: ' + it.mail)
-    vFileLdifFile.write("")
+new File('ldapMailTree.ldif').withWriter { out ->
+    vArrMailBaum.each {
+        sha1.update(it.mail.getBytes())
+        def hash = new BigInteger(1, sha1.digest())
+        out.println 'objectclass: top'
+        out.println 'objectclass: person'
+        out.println 'objectclass: inetorgperson'
+        out.println 'uid: ' + hash.toString()
+        out.println 'cn: ' + it.gname.toString().trim() + " " + it.sname.toString().trim()
+        out.println 'givenname: ' + it.gname.toString().trim()
+        out.println 'sn: ' + it.sname.toString().trim()
+        out.println 'mail: ' + it.mail
+        out.println ""
+    }
 }
-
 
 println "Anzahl der gefundenen UMT-Eintraege: ${vIntUmtCounter}"
 println "Anzahl der gefundenen SVA-Eintraege: ${vIntSVACounter}"
