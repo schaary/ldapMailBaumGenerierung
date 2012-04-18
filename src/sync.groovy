@@ -69,12 +69,13 @@ new File('ldapMailTree.ldif').withWriter { out ->
     vArrMailBaum.each {
         sha1.update(it.mail.getBytes())
         def hash = new BigInteger(1, sha1.digest())
+        out.println 'dn: uid=' + hash.toString() + ',ou=mail2,o=mlu,c=de'
         out.println 'objectclass: top'
         out.println 'objectclass: person'
         out.println 'objectclass: inetorgperson'
         out.println 'uid: ' + hash.toString()
         out.println 'cn: ' + it.gname.toString().trim() + " " + it.sname.toString().trim()
-        out.println 'givenname: ' + it.gname.toString().trim()
+        if (it.gname.toString().trim()) {out.println 'givenname: ' + it.gname.toString().trim()}
         out.println 'sn: ' + it.sname.toString().trim()
         out.println 'mail: ' + it.mail
         out.println ""
