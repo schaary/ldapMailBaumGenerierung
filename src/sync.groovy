@@ -23,13 +23,21 @@ def vIntUmtCounter = 0;
 def vIntSVACounter = 0;
 def vIntUKCounter = 0;
 
+def sha1 = MessageDigest.getInstance("SHA1")
+def vStrCheckSumString = ''
+
 db("BEGIN ? := mail_pkg.getUmtMailAddresses(?); END;",
 [OracleTypes.INTEGER, Sql.resultSet(OracleTypes.CURSOR)]) { cursorResults ->
     while (cursorResults.next()) {
         vIntUmtCounter += 1;
         if (!vSetCheckList.contains(cursorResults.getAt(0))) { 
             vSetCheckList.add(cursorResults.getAt(0).toString().trim())
-            vArrMailBaum.add([ mail: cursorResults.getAt(0).toString().trim(),
+            vStrCheckSumString = cursorResults.getAt(0).toString().trim().toLowerCase() + 
+                                 cursorResults.getAt(1).toString().trim().toLowerCase() +
+                                 cursorResults.getAt(2).toString().trim().toLowerCase()
+            sha1.update(vStrCheckSumString.getBytes())
+            vArrMailBaum.add([  uid: new BigInteger(1, sha1.digest()),
+                               mail: cursorResults.getAt(0).toString().trim(),
                               sname: cursorResults.getAt(1).toString().trim(),
                               gname: cursorResults.getAt(2).toString().trim()])
         }
@@ -43,7 +51,12 @@ db("BEGIN ? := mail_pkg.getSVAMailAddresses(?); END;",
         vIntSVACounter += 1;
         if (!vSetCheckList.contains(cursorResults.getAt(0))) { 
             vSetCheckList.add(cursorResults.getAt(0).toString().trim())
-            vArrMailBaum.add([ mail: cursorResults.getAt(0).toString().trim(),
+            vStrCheckSumString = cursorResults.getAt(0).toString().trim().toLowerCase() + 
+                                 cursorResults.getAt(1).toString().trim().toLowerCase() +
+                                 cursorResults.getAt(2).toString().trim().toLowerCase()
+            sha1.update(vStrCheckSumString.getBytes())
+            vArrMailBaum.add([  uid: new BigInteger(1, sha1.digest()),
+                               mail: cursorResults.getAt(0).toString().trim(),
                               sname: cursorResults.getAt(1).toString().trim(),
                               gname: cursorResults.getAt(2).toString().trim()])
         }
@@ -56,24 +69,26 @@ db("BEGIN ? := mail_pkg.getUKMailAddresses(?); END;",
         vIntUKCounter += 1;
         if (cursorResults.getAt(0).toString().trim()[0] != '0' && !vSetCheckList.contains(cursorResults.getAt(0))) { 
             vSetCheckList.add(cursorResults.getAt(0).toString().trim())
-            vArrMailBaum.add([ mail: cursorResults.getAt(0).toString().trim(),
+            vStrCheckSumString = cursorResults.getAt(0).toString().trim().toLowerCase() + 
+                                 cursorResults.getAt(1).toString().trim().toLowerCase() +
+                                 cursorResults.getAt(2).toString().trim().toLowerCase()
+            sha1.update(vStrCheckSumString.getBytes())
+            vArrMailBaum.add([  uid: new BigInteger(1, sha1.digest()),
+                               mail: cursorResults.getAt(0).toString().trim(),
                               sname: cursorResults.getAt(1).toString().trim(),
                               gname: cursorResults.getAt(2).toString().trim()])
         }
     }    
 } 
 
-def sha1 = MessageDigest.getInstance("SHA1")
 
 new File('ldapMailTree.ldif').withWriter { out ->
     vArrMailBaum.each {
-        sha1.update(it.mail.getBytes())
-        def hash = new BigInteger(1, sha1.digest())
-        out.println 'dn: uid=' + hash.toString() + ',ou=mail2,o=mlu,c=de'
+        out.println 'dn: uid=' + it.uid.toString() + ',ou=mail2,o=mlu,c=de'
         out.println 'objectclass: top'
         out.println 'objectclass: person'
         out.println 'objectclass: inetorgperson'
-        out.println 'uid: ' + hash.toString()
+        out.println 'uid: ' + it.uid.toString()
         out.println 'cn: ' + it.gname.toString().trim() + " " + it.sname.toString().trim()
         if (it.gname.toString().trim()) {out.println 'givenname: ' + it.gname.toString().trim()}
         out.println 'sn: ' + it.sname.toString().trim()
