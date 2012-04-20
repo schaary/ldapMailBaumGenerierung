@@ -3,18 +3,27 @@
 import groovy.sql.Sql
 import oracle.jdbc.driver.*
 import java.security.MessageDigest
+import org.apache.directory.groovyldap.LDAP
 
 def passwordDir = System.getProperty("user.home") + "/.password/"
 
+def ldapCredentialFile = new File(passwordDir+"ldap4_admin.xml")
 def oracleCredentialFile = new File(passwordDir+"oracle_delphi1.xml")
+
 assert oracleCredentialFile.exists(), "Konnte die Oracle Zugangsdaten nicht finden"
+assert ldapCredentialFile.exists(), "Konnte die LDAP Zugangsdaten nicht finden"
+
 def oracleLogin = new XmlSlurper().parse(oracleCredentialFile)
+def ldapLogin = new XmlSlurper().parse(ldapCredentialFile)
 
 def db = Sql.newInstance('jdbc:oracle:thin:@'+oracleLogin.host.toString()+':'+oracleLogin.port.toString()+':'+oracleLogin.instance.toString(),
                      oracleLogin.user.toString(),
                      oracleLogin.password.toString(),
                      oracleLogin.jdbc.toString())
 
+def ldap = LDAP.newInstance(ldapLogin.uri.toString()+':'+ ldapLogin.port.toString() +'/ou=mail,'+ ldapLogin.baseDN.toString()
+                           ,ldapLogin.user.toString()
+                           ,ldapLogin.password.toString())
 
 def vArrMailBaum = []
 def vSetCheckList = [] as Set
@@ -26,6 +35,24 @@ def vIntUKCounter = 0;
 def sha1 = MessageDigest.getInstance("SHA1")
 def vStrCheckSumString = ''
 
+def vArrLDAP = []
+
+
+def vIntCounter = 0
+ldap.eachEntry ('(uid=*)') { entry ->
+    if (++vIntCounter < 10) { println entry.uid.toString().trim() }
+    vArrLDAP.add(entry.uid.toString().trim())
+}
+
+println vArrLDAP.size()
+
+def outFile = new File('uids.ldif')
+
+vArrLDAP.each {
+    outFile << it + "\n"
+}
+
+/*
 db("BEGIN ? := mail_pkg.getUmtMailAddresses(?); END;",
 [OracleTypes.INTEGER, Sql.resultSet(OracleTypes.CURSOR)]) { cursorResults ->
     while (cursorResults.next()) {
@@ -96,7 +123,7 @@ new File('ldapMailTree.ldif').withWriter { out ->
         out.println ""
     }
 }
-
+*/
 println "Anzahl der gefundenen UMT-Eintraege: ${vIntUmtCounter}"
 println "Anzahl der gefundenen SVA-Eintraege: ${vIntSVACounter}"
 println "Anzahl der gefundenen UK-Eintraege: ${vIntUKCounter}"
