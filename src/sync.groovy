@@ -3,6 +3,7 @@
 import groovy.sql.Sql
 import oracle.jdbc.driver.*
 import java.security.MessageDigest
+import org.apache.directory.groovyldap.*
 import org.apache.directory.groovyldap.LDAP
 
 def passwordDir = System.getProperty("user.home") + "/.password/"
@@ -21,9 +22,11 @@ def db = Sql.newInstance('jdbc:oracle:thin:@'+oracleLogin.host.toString()+':'+or
                      oracleLogin.password.toString(),
                      oracleLogin.jdbc.toString())
 
-def ldap = LDAP.newInstance(ldapLogin.uri.toString()+':'+ ldapLogin.port.toString() +'/ou=mail,'+ ldapLogin.baseDN.toString()
-                           ,ldapLogin.user.toString()
-                           ,ldapLogin.password.toString())
+def ldap = LDAP.newInstance(
+    ldapLogin.uri.toString()+':'+ ldapLogin.port.toString() +
+        '/' + ldapLogin.baseDN.toString(),
+    ldapLogin.user.toString(),
+   ldapLogin.password.toString())
 
 def vArrMailBaum = []
 def vSetCheckList = [] as Set
@@ -39,12 +42,19 @@ def vArrLDAP = []
 
 
 def vIntCounter = 0
-ldap.eachEntry ('(uid=*)') { entry ->
-    if (++vIntCounter < 10) { println entry.uid.toString().trim() }
-    vArrLDAP.add(entry.uid.toString().trim())
-}
+vArrParams = new Search()
+vArrParams.filter = '(uid=*)'
+vArrParams.scope = 'SUB'
+vArrParams.base = 'ou=mail'
+results = ldap.search(vArrParams)
+println results.size()
 
-println vArrLDAP.size()
+//ldap.eachEntry ('(uid=*)') { entry ->
+//    if (++vIntCounter < 10) { println entry.uid.toString().trim() }
+//    vArrLDAP.add(entry.uid.toString().trim())
+//}
+
+// println vArrLDAP.size()
 
 def outFile = new File('uids.ldif')
 
