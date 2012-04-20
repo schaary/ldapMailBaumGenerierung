@@ -4,7 +4,7 @@ import groovy.sql.Sql
 import oracle.jdbc.driver.*
 import java.security.MessageDigest
 import org.apache.directory.groovyldap.*
-import org.apache.directory.groovyldap.LDAP
+// import org.apache.directory.groovyldap.LDAP
 
 def passwordDir = System.getProperty("user.home") + "/.password/"
 
